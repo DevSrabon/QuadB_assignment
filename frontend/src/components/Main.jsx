@@ -5,7 +5,7 @@ export const Main = () => {
 
   useEffect(() => {
   const interval = setInterval(() => {
-    fetch("https://quad-b-assignment.vercel.app/")
+    fetch("https://quad-b-assignment.vercel.app/tickers")
 			.then((res) => res.json())
 			.then((data) => {
 				setData(data[0].tickers);
