@@ -24,31 +24,39 @@ const client = new MongoClient(uri, {
 async function run() {
 	try {
 		const collection = client.db("QuadB_Db").collection("tickers");
-		setInterval(async () => {
-			const response = await fetch("https://api.wazirx.com/api/v2/tickers");
-			const json = await response.json();
-			const top10 = Object.entries(json)
-				.sort(([, a], [, b]) => b.last - a.last)
-				.slice(0, 10);
-			const collectionData = await collection.find({}).toArray();
-
-			if (collectionData.length < 1 || collectionData.length < 10) {
-				await collection.insertMany(
-					top10.map(([name, data]) => ({
-						name,
-						last: data.last,
-						buy: data.buy,
-						sell: data.sell,
-						volume: data.volume,
-						base_unit: data.base_unit,
-						id: "1",
-					}))
-				);
-			}
-		}, 10000);
 		setInterval(() => {
-			collection.deleteMany({ id: "1" });
-		}, 9999);
+			fetch("https://api.wazirx.com/api/v2/tickers")
+				.then((res) => res.json())
+				.then((data) => {
+					const top10 = Object.values(data)
+						.sort((a, b) => b.last - a.last)
+						.slice(0, 10)
+						.map((item) => ({
+							name: item.name,
+							last: item.last,
+							buy: item.buy,
+							sell: item.sell,
+							volume: item.volume,
+							base_unit: item.base_unit,
+						}));
+
+					collection.updateOne(
+						{ _id: "top10" },
+						{ $set: { tickers: top10 } },
+						{ upsert: true },
+						(err) => {
+							if (err) {
+								console.error("Error updating top10 tickers", err);
+							} else {
+								console.log("Top10 tickers updated");
+							}
+						}
+					);
+				})
+				.catch((err) => {
+					console.error("Error fetching tickers", err);
+				});
+		}, 10000);
 
 		app.get("/tickers", async (req, res) => {
 			const tickers = await collection.find().toArray();
